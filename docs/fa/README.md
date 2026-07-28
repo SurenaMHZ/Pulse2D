@@ -6,9 +6,10 @@
 
 تایپ‌اسکریپت · بدون وابستگی · ۳۳ کیلوبایت فشرده · نتیجهٔ یکسان روی هر دستگاه
 
-[![CI](https://github.com/SurenaMHZ/pulse2d/actions/workflows/ci.yml/badge.svg)](https://github.com/SurenaMHZ/pulse2d/actions/workflows/ci.yml)
-[![npm](https://img.shields.io/npm/v/pulse2d.svg)](https://www.npmjs.com/package/pulse2d)
-[![licence](https://img.shields.io/badge/licence-MIT-blue)](../../LICENSE)
+
+[![bundle size](https://img.shields.io/badge/gzipped-33%20KB-blue)](#performance)
+[![dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)](package.json)
+[![licence](https://img.shields.io/badge/licence-MIT-blue)](LICENSE)
 
 [شروع سریع](#شروع-سریع) · [مستندات](#مستندات) · [قطعیت](DETERMINISM.md) · [مرجع API](API.md) · [کارایی](#کارایی)
 
@@ -48,10 +49,6 @@ Pulse2D از ابتدا برعکس ساخته شده — **اول قطعیت**:
 ## نصب
 
 </div>
-
-```bash
-npm install pulse2d
-```
 
 ```ts
 import { World, BodyType, Polygon, Circle } from 'pulse2d';
