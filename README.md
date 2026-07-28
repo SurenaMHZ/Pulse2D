@@ -12,7 +12,7 @@ TypeScript · zero dependencies · 33 KB gzipped · bit-identical on every devic
 [![dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)](package.json)
 [![licence](https://img.shields.io/badge/licence-MIT-blue)](LICENSE)
 
-[Quick start](#quick-start) · [Documentation](#documentation) · [Determinism](docs/DETERMINISM.md) · [API reference](docs/API.md) · [Benchmarks](#performance)
+ [Quick start](#quick-start) · [Documentation](#documentation) · [Determinism](docs/DETERMINISM.md) · [API reference](docs/API.md) · [Benchmarks](#performance)
 
 **[مستندات فارسی](docs/fa/README.md)**
 
@@ -66,7 +66,7 @@ import { World } from 'pulse2d/fixed';
 No build step? Drop in the UMD bundle:
 
 ```html
-<script src="./dist/pulse2d.umd.js"></script>
+<script src="https://unpkg.com/pulse2d/dist/pulse2d.umd.js"></script>
 <script>const world = new Pulse2D.World({ gravity: { x: 0, y: -10 } });</script>
 ```
 
@@ -556,5 +556,3 @@ Verified on Node 20 and Node 24, on Linux and Windows (PowerShell).
 ## Licence
 
 MIT
-#   P u l s e 2 D  
- 
