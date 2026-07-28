@@ -387,8 +387,7 @@ const scenes = {
 
   'Billiards': () => {
     const w = new World({ gravity: { x: 0, y: 0 } });
-    $('grav').value=0;
-    applyGrav();
+    _setGravity0();
     for (const [x, y, hw, hh] of [[0, 5.2, 7, 0.3], [0, -5.2, 7, 0.3], [-7.3, 0, 0.3, 5.5], [7.3, 0, 0.3, 5.5]]) {
       const b = w.createBody({ type: BodyType.Static, position: { x, y } });
       b.addFixture({ shape: Polygon.box(hw, hh), restitution: 0.7, friction: 0.2 });
@@ -659,6 +658,10 @@ const applyGrav  = bindSlider('grav', 'gravV', (v) => v.toFixed(1), (v) => {
   world.gravity.set(S.ZERO, S.fromFloat(v));
   world.wakeAll();
 });
+function _setGravity0(){
+  $('grav').value=0;
+  applyGrav();
+}
 
 $('sleep').onchange = (e) => { if (world) { world.enableSleep = e.target.checked; world.wakeAll(); } };
 $('warm').onchange  = (e) => { if (world) world.enableWarmStarting = e.target.checked; };

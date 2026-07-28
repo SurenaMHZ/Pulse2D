@@ -41,7 +41,8 @@ function extractScenes() {
       'const draw = new DebugDraw(ctx, { pixelsPerMeter: 26, cameraY: 7 });',
       'const draw = { pixelsPerMeter: 26, cameraX: 0, cameraY: 7, flags: {}, ctx: null };',
     )
-    .replace('function toast(msg) {', 'function toast(msg) { return;');
+    .replace('function toast(msg) {', 'function toast(msg) { return;')
+    .replace('_setGravity0()', '');
 
   const dir = mkdtempSync(join(tmpdir(), 'pulse2d-demo-'));
   const file = join(dir, 'scenes.mjs');
