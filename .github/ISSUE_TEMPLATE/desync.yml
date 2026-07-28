@@ -1,0 +1,61 @@
+name: Determinism / desync report
+description: Two machines produced different results
+labels: [bug, determinism, priority]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Determinism is the central promise of this library, so these reports
+        are treated as high priority. Please help pin it down.
+
+        First, run this on **each** machine that disagrees and paste both
+        outputs — it prints the recorded cross-platform contract digests:
+
+        ```bash
+        npm ci && npm run build && node scripts/golden.mjs
+        ```
+
+  - type: textarea
+    id: golden
+    attributes:
+      label: "`node scripts/golden.mjs` output from every machine involved"
+      render: text
+    validations:
+      required: true
+
+  - type: input
+    id: tick
+    attributes:
+      label: First tick at which the checksums differ
+      description: From `checksumWorld(world)` compared per tick on both peers.
+      placeholder: "tick 412"
+
+  - type: textarea
+    id: env
+    attributes:
+      label: The machines
+      description: OS, CPU architecture, Node or browser version for each peer.
+      placeholder: |
+        Peer A: Windows 11, x64, Node 24.18.0
+        Peer B: macOS 15, arm64, Chrome 130
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: ruledout
+    attributes:
+      label: Ruled out
+      description: The most common causes of a "desync" that is not an engine bug.
+      options:
+        - label: Both peers run the same Pulse2D version and the same `PROTOCOL_VERSION`
+        - label: Both peers use the same scalar backend (not one float64 and one fixed-point)
+        - label: No `Math.random`, `Date.now` or wall-clock reading feeds into game logic
+        - label: Inputs are applied on the same tick on both peers
+        - label: Nothing iterates a `Map`/`Set` whose order depends on discovery history
+        - label: No floats crossed the wire as text and got re-parsed with fewer digits
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction, if you have one
+      render: javascript

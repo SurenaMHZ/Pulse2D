@@ -1,0 +1,70 @@
+name: Bug report
+description: Something behaves incorrectly
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. A small script that reproduces the problem is
+        worth more than any description — maintainers can run it directly.
+
+        Three behaviours look like bugs but are correct physics, so please
+        check these first:
+
+        1. An undamped hanging chain swings for a very long time — its energy
+           does decay; add `linearDamping` if you want it to settle.
+        2. Bodies spawned overlapping push apart on the first step.
+        3. Separated bodies keep their velocity forever in a frictionless void
+           (Newton's first law).
+
+        One known limitation is documented rather than fixed: a Newton's cradle
+        of *exactly touching* balls shares the impulse instead of passing it to
+        the last ball. See `docs/ARCHITECTURE.md` §3.8. Leave a small gap.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happens, and what you expected instead
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction
+      description: A script using the public API, as small as you can make it.
+      render: javascript
+      placeholder: |
+        import { World, BodyType, Circle, Polygon } from 'pulse2d';
+        const world = new World({ gravity: { x: 0, y: -10 } });
+        // …
+        for (let i = 0; i < 300; i++) world.step();
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Pulse2D version
+      placeholder: "1.3.1"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: backend
+    attributes:
+      label: Scalar backend
+      options:
+        - float64 (import from 'pulse2d')
+        - fixed-point (import from 'pulse2d/fixed')
+        - both
+    validations:
+      required: true
+
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      placeholder: "Node 24 on Windows 11 / Chrome 130 on macOS 15"
+    validations:
+      required: true

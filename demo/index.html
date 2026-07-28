@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pulse2D — interactive demo</title>
+<style>
+  :root {
+    --bg: #14141b;
+    --panel: #1b1b24;
+    --panel2: #22222e;
+    --line: #2e2e3c;
+    --text: #e8e8ef;
+    --dim: #9a9ab0;
+    --accent: #e8a33d;
+    --good: #7ec850;
+    --bad: #ff5c5c;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 13px/1.5 ui-sans-serif, system-ui, -apple-system, sans-serif;
+    display: flex; flex-direction: column;
+  }
+  header {
+    padding: 8px 14px; border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap; flex-shrink: 0;
+  }
+  h1 { font-size: 15px; margin: 0; font-weight: 600; letter-spacing: .3px; }
+  h1 span { color: var(--accent); }
+  .ver { color: var(--dim); font-size: 11px; }
+  .spacer { flex: 1; }
+  .hint { color: var(--dim); font-size: 11px; }
+  kbd {
+    background: var(--panel2); border: 1px solid var(--line); border-bottom-width: 2px;
+    border-radius: 4px; padding: 0 4px; font: 11px ui-monospace, monospace; color: var(--text);
+  }
+  main { flex: 1; display: flex; min-height: 0; }
+  #stage { flex: 1; position: relative; min-width: 0; }
+  canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+  canvas.grab { cursor: grab; }
+  canvas.grabbing { cursor: grabbing; }
+
+  aside {
+    width: 278px; border-left: 1px solid var(--line); background: var(--panel);
+    overflow-y: auto; flex-shrink: 0;
+  }
+  aside::-webkit-scrollbar { width: 8px; }
+  aside::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+  section { padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  /* Two columns keeps 16 scenes on screen instead of pushing the rest below the fold. */
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  .grid button { margin-bottom: 0; padding: 5px 7px; font-size: 11.5px; }
+  h2 {
+    font-size: 10px; text-transform: uppercase; letter-spacing: .1em;
+    color: var(--dim); margin: 0 0 8px; font-weight: 700;
+    display: flex; justify-content: space-between; align-items: baseline;
+  }
+  h2 em { font-style: normal; font-weight: 500; text-transform: none; letter-spacing: 0; opacity: .75; }
+  button {
+    display: block; width: 100%; text-align: left;
+    background: var(--panel2); color: var(--text);
+    border: 1px solid var(--line); border-radius: 6px;
+    padding: 6px 9px; margin-bottom: 4px; cursor: pointer;
+    font: inherit; font-size: 12.5px; transition: background .12s;
+  }
+  button:hover { background: #2c2c3b; }
+  button.on { background: var(--accent); border-color: var(--accent); color: #1a1a10; font-weight: 600; }
+  .row { display: flex; gap: 4px; margin-bottom: 7px; }
+  .row button { margin-bottom: 0; text-align: center; white-space: nowrap; }
+  label {
+    display: flex; align-items: center; gap: 6px;
+    padding: 1px 0; cursor: pointer; font-size: 12px; color: var(--dim);
+  }
+  /* Draw flags read better in two columns too. */
+  #flags { display: grid; grid-template-columns: 1fr 1fr; gap: 0 8px; }
+  label:hover { color: var(--text); }
+  label input[type=checkbox] { accent-color: var(--accent); cursor: pointer; }
+  .slider { margin-bottom: 7px; }
+  .slider div { display: flex; justify-content: space-between; color: var(--dim); font-size: 11.5px; margin-bottom: 3px; }
+  .slider b { color: var(--text); font-weight: 600; font-family: ui-monospace, monospace; }
+  input[type=range] { width: 100%; accent-color: var(--accent); cursor: pointer; margin: 0; }
+  #stats { font: 11.5px/1.65 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--dim); white-space: pre; }
+  #stats b { color: var(--text); font-weight: 600; }
+  #stats i { color: var(--accent); font-style: normal; }
+  .bar { height: 3px; background: var(--panel2); border-radius: 2px; overflow: hidden; margin: 5px 0 9px; }
+  .bar > i { display: block; height: 100%; background: var(--accent); transition: width .15s; }
+  #verdict { font-size: 11.5px; line-height: 1.55; }
+  #verdict .ok { color: var(--good); }
+  #verdict .no { color: var(--bad); }
+  #toast {
+    position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%);
+    background: rgba(20,20,27,.94); border: 1px solid var(--line); border-radius: 7px;
+    padding: 7px 14px; font-size: 12.5px; pointer-events: none; opacity: 0;
+    transition: opacity .25s; white-space: nowrap;
+  }
+  #toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Pulse<span>2D</span></h1>
+  <span class="ver" id="ver"></span>
+  <span class="spacer"></span>
+  <span class="hint">
+    <kbd>drag</kbd> move · <kbd>right-drag</kbd> pan · <kbd>wheel</kbd> zoom ·
+    <kbd>Space</kbd> pause · <kbd>.</kbd> step · <kbd>R</kbd> reset
+  </span>
+</header>
+
+<main>
+  <div id="stage">
+    <canvas id="c"></canvas>
+    <div id="toast"></div>
+  </div>
+
+  <aside>
+    <section>
+      <h2>Scene <em id="sceneInfo"></em></h2>
+      <div id="scenes" class="grid"></div>
+    </section>
+
+    <section>
+      <h2>Tool <em id="toolHint">grab and throw bodies</em></h2>
+      <div id="tools" class="grid"></div>
+    </section>
+
+    <section>
+      <h2>Time</h2>
+      <div class="row">
+        <button id="play">Pause</button>
+        <button id="stepBtn" style="width:84px">Step &rsaquo;</button>
+      </div>
+      <div class="slider">
+        <div><span>speed</span><b id="speedV">1.00×</b></div>
+        <input type="range" id="speed" min="0.1" max="2" step="0.05" value="1">
+      </div>
+    </section>
+
+    <section>
+      <h2>Solver</h2>
+      <div class="slider">
+        <div><span>sub-steps</span><b id="subV">4</b></div>
+        <input type="range" id="sub" min="1" max="12" step="1" value="4">
+      </div>
+      <div class="slider">
+        <div><span>gravity</span><b id="gravV">-10.0</b></div>
+        <input type="range" id="grav" min="-25" max="10" step="0.5" value="-10">
+      </div>
+      <label><input type="checkbox" id="sleep" checked> allow sleeping</label>
+      <label><input type="checkbox" id="warm" checked> warm starting</label>
+    </section>
+
+    <section>
+      <h2>Draw</h2>
+      <div id="flags"></div>
+    </section>
+
+    <section>
+      <h2>Determinism check</h2>
+      <button id="detBtn" style="text-align:center">Run 600-step test</button>
+      <div id="verdict" style="margin-top:8px;color:var(--dim)">
+        Runs this scene twice from the same seed and compares checksums each tick.
+      </div>
+    </section>
+
+    <section>
+      <h2>Stats</h2>
+      <div id="stats"></div>
+      <div class="bar"><i id="loadBar" style="width:0%"></i></div>
+      <div class="hint" style="font-size:11px">bar = share of a 60 Hz frame</div>
+    </section>
+  </aside>
+</main>
+
+<script type="module">
+import {
+  World, BodyType, Circle, Capsule, Polygon, Segment, ChainShape,
+  Vec2, DebugDraw, Rng, checksumWorld, VERSION, Scalar as S,
+} from '../dist/pulse2d.mjs';
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const f = S.toFloat;
+document.getElementById('ver').textContent = 'v' + VERSION;
+
+const draw = new DebugDraw(ctx, { pixelsPerMeter: 26, cameraY: 7 });
+
+let world, groundBody = null, mouseJoint = null;
+let paused = false, speed = 1, stepOnce = false;
+
+/* ------------------------------ helpers ---------------------------- */
+
+function ground(w, halfWidth = 60) {
+  const g = w.createBody({ type: BodyType.Static, position: { x: 0, y: -1 } });
+  g.addFixture({ shape: Polygon.box(halfWidth, 1), friction: 0.7 });
+  groundBody = g;
+  return g;
+}
+function wall(w, x, y, hw, hh, friction = 0.4) {
+  const b = w.createBody({ type: BodyType.Static, position: { x, y } });
+  b.addFixture({ shape: Polygon.box(hw, hh), friction });
+  return b;
+}
+function hills(w, amp = 1.0, amp2 = 1.4) {
+  const g = w.createBody({ type: BodyType.Static });
+  const pts = [];
+  for (let x = -60; x <= 60; x += 1.5) {
+    pts.push(Vec2.of(x, Math.sin(x * 0.18) * amp + Math.sin(x * 0.05) * amp2));
+  }
+  for (const s of ChainShape.fromPoints(pts)) g.addFixture({ shape: s, friction: 0.9 });
+  groundBody = g;
+  return g;
+}
+
+/* ------------------------------ scenes ----------------------------- */
+// Every scene below was verified headless before being added here.
+
+const scenes = {
+
+  'Pyramid': () => {
+    const w = new World({ gravity: { x: 0, y: -10 } });
+    ground(w);
+    const s = 0.4;
+    for (let row = 0; row < 14; row++) {
+      for (let col = 0; col <= row; col++) {
+        const b = w.createBody({
+          type: BodyType.Dynamic,
+          position: { x: (col - row * 0.5) * s * 2.1, y: (14 - row) * s * 2.1 + s },
+        });
+        b.addFixture({ shape: Polygon.box(s, s), density: 1, friction: 0.6 });
+      }
+    }
+    return w;
+  },
+
+  'Mixed shapes': () => {
+    const w = new World({ gravity: { x: 0, y: -10 } });
+    ground(w);
+    wall(w, -14, 6, 0.5, 6); wall(w, 14, 6, 0.5, 6);
+    const rng = new Rng(7);
+    for (let i = 0; i < 70; i++) {
+      const b = w.createBody({
+        type: BodyType.Dynamic,
+        position: { x: rng.float() * 22 - 11, y: 2 + rng.float() * 18 },
+        angle: rng.float() * 6,
+      });
+      const k = rng.int(0, 3);
+      if (k === 0) b.addFixture({ shape: Circle.of(0.25 + rng.float() * 0.3), density: 1, restitution: 0.3 });
+      else if (k === 1) b.addFixture({ shape: Polygon.box(0.25 + rng.float() * 0.25, 0.25 + rng.float() * 0.25), density: 1, friction: 0.5 });
+      else if (k === 2) b.addFixture({ shape: Capsule.vertical(0.9, 0.2), density: 1, friction: 0.4 });
+      else b.addFixture({ shape: Polygon.regular(3 + rng.int(0, 4), 0.3 + rng.float() * 0.2), density: 1, friction: 0.5 });
+    }
+    return w;
+  },
+
+  'Dominoes': () => {
+    const w = new World({ gravity: { x: 0, y: -10 } });
+    ground(w);
+    const first = [];
+    for (let i = 0; i < 24; i++) {
+      const b = w.createBody({ type: BodyType.Dynamic, position: { x: i * 0.75 - 9, y: 0.9 } });
+      b.addFixture({ shape: Polygon.box(0.07, 0.9), density: 1, friction: 0.6 });
+      first.push(b);
+    }
+    // Nudge the first one so the chain reaction starts on its own.
+    setTimeout(() => {
+      first[0].applyLinearImpulse(0.5, 0, f(first[0].getPosition().x), 1.6);
+    }, 500);
+    return w;
+  },
+
+  'Rope bridge': () => {
+    const w = new World({ gravity: { x: 0, y: -10 } });
+    ground(w);
+    const N = 18, span = 13, y = 7;
+    let prev = w.createBody({ type: BodyType.Static, position: { x: -span / 2, y } });
+    for (let i = 0; i < N; i++) {
+      const x = -span / 2 + (i + 0.5) * (span / N);
+      const p = w.createBody({ type: BodyType.Dynamic, position: { x, y } });
+      p.addFixture({ shape: Polygon.box((span / N / 2) * 0.92, 0.09), density: 2, friction: 0.8 });
+      w.createRevoluteJointAt(prev, p, x - span / N / 2, y);
+      prev = p;
+    }
+    const right = w.createBody({ type: BodyType.Static, position: { x: span / 2, y } });
+    w.createRevoluteJointAt(prev, right, span / 2, y);
+    for (let i = 0; i < 4; i++) {
+      const c = w.createBody({ type: BodyType.Dynamic, position: { x: -3 + i * 2, y: 9.5 } });
+      c.addFixture({ shape: Polygon.box(0.3, 0.3), density: 1.2, friction: 0.8 });
+    }
+    return w;
+  },
+
+  'Plinko': () => {
+    const w = new World({ gravity: { x: 0, y: -10 } });
+    ground(w, 14);
+    wall(w, -8.5, 7, 0.4, 9); wall(w, 8.5, 7, 0.4, 9);
+    for (let r = 0; r < 7; r++) {
+      for (let c = 0; c <= r; c++) {
+        const p = w.createBody({ type: BodyType.Static, position: { x: (c - r * 0.5) * 1.6, y: 12 - r * 1.3 } });
+        p.addFixture({ shape: Circle.of(0.16), restitution: 0.4 });
+      }
+    }
+    for (let i = -3; i <= 3; i++) wall(w, i * 2.2, 0.9, 0.06, 1.1);   // collection bins
+    for (let i = 0; i < 16; i++) {
+      const b = w.createBody({ type: BodyType.Dynamic, position: { x: (i % 3 - 1) * 0.15, y: 14 + i * 0.55 } });
+      b.addFixture({ shape: Circle.of(0.2), density: 1, restitution: 0.35, friction: 0.2 });
+    }
+    return w;
+  },
+
+  'Ragdoll chains': () => {
+    const w = new World({ gravity: { x: 0, y: -10 } });
+    ground(w);
+    for (let c = 0; c < 6; c++) {
+      const x = c * 4 - 10;
+      let prev = w.createBody({ type: BodyType.Static, position: { x, y: 17 } });
+      for (let i = 0; i < 11; i++) {
+        const link = w.createBody({ type: BodyType.Dynamic, position: { x, y: 17 - (i + 1) * 0.62 } });
+        link.addFixture({ shape: Polygon.box(0.09, 0.3), density: 1, friction: 0.4, filter: { group: -(c + 1) } });
+        w.createRevoluteJointAt(prev, link, x, 17 - i * 0.62 - 0.31);
+        prev = link;
+      }
+      const ball = w.createBody({ type: BodyType.Dynamic, position: { x, y: 17 - 12 * 0.62 } });
+      ball.addFixture({ shape: Circle.of(0.4), density: 4, filter: { group: -(c + 1) } });
+      w.createRevoluteJointAt(prev, ball, x, 17 - 11 * 0.62 - 0.31);
+    }
+    return w;
+  },
+
+  'Car + suspension': () => {
+    const w = new World({ gravity: { x: 0, y: -10 } });
+    hills(w);
+    const chassis = w.createBody({ type: BodyType.Dynamic, position: { x: 0, y: 6 } });
+    chassis.addFixture({ shape: Polygon.box(1.3, 0.25), density: 1, filter: { group: -20 } });
+    chassis.addFixture({ shape: Polygon.offsetBox(0.55, 0.25, -0.1, 0.45), density: 0.6, filter: { group: -20 } });
+
+    for (const dx of [-0.9, 0.9]) {
+      /*
+       * A prismatic joint locks rotation, so the wheel cannot be attached to
+       * it directly — the two joints would fight. A tiny hub rides the spring
+       * and the wheel spins on the hub.
+       */
+      const hub = w.createBody({ type: BodyType.Dynamic, position: { x: dx, y: 5.35 } });
+      hub.addFixture({ shape: Polygon.box(0.08, 0.08), density: 0.4, filter: { group: -20 } });
+      w.createPrismaticJoint({
+        bodyA: chassis, bodyB: hub,
+        localAnchorA: { x: dx, y: -0.65 }, localAnchorB: { x: 0, y: 0 },
+        localAxisA: { x: 0, y: 1 },
+        enableSpring: true, hertz: 4.5, dampingRatio: 0.7,
+        enableLimit: true, lowerLimit: -0.3, upperLimit: 0.3,
+      });
+      const wheel = w.createBody({ type: BodyType.Dynamic, position: { x: dx, y: 5.35 } });
+      wheel.addFixture({ shape: Circle.of(0.4), density: 1.2, friction: 2.2, filter: { group: -20 } });
+      w.createRevoluteJoint({
+        bodyA: hub, bodyB: wheel,
+        localAnchorA: { x: 0, y: 0 }, localAnchorB: { x: 0, y: 0 },
+        enableMotor: true, motorSpeed: -9, maxMotorForce: 70,
+      });
+    }
+    return w;
+  },
+
+  'Tumbler': () => {
+    const w = new World({ gravity: { x: 0, y: -10 } });
+    const base = w.createBody({ type: BodyType.Static });
+    const drum = w.createBody({ type: BodyType.Dynamic, position: { x: 0, y: 7 } });
+    const R = 4.2, T = 0.3;
+    for (let i = 0; i < 4; i++) {
+      const a = i * Math.PI / 2;
+      drum.addFixture({
+        shape: Polygon.offsetBox(R, T, Math.cos(a) * R, Math.sin(a) * R, a + Math.PI / 2),
+        density: 2, friction: 0.5,
+      });
+    }
+    w.createRevoluteJointAt(base, drum, 0, 7, { enableMotor: true, motorSpeed: 0.9, maxMotorForce: 4000 });
+    const rng = new Rng(3);
+    for (let i = 0; i < 26; i++) {
+      const b = w.createBody({ type: BodyType.Dynamic, position: { x: (i % 6) * 0.7 - 1.7, y: 7 + Math.floor(i / 6) * 0.7 - 1 } });
+      if (i % 2) b.addFixture({ shape: Circle.of(0.24), density: 1, friction: 0.4 });
+      else b.addFixture({ shape: Polygon.box(0.22, 0.22), density: 1, friction: 0.4 });
+    }
+    return w;
+  },
+
+  'Billiards': () => {
+    const w = new World({ gravity: { x: 0, y: 0 } });
+    $('grav').value=0;
+    applyGrav();
+    for (const [x, y, hw, hh] of [[0, 5.2, 7, 0.3], [0, -5.2, 7, 0.3], [-7.3, 0, 0.3, 5.5], [7.3, 0, 0.3, 5.5]]) {
+      const b = w.createBody({ type: BodyType.Static, position: { x, y } });
+      b.addFixture({ shape: Polygon.box(hw, hh), restitution: 0.7, friction: 0.2 });
+    }
+    // Damping stands in for rolling resistance on the cloth.
+    const mk = (x, y) => {
+      const b = w.createBody({ type: BodyType.Dynamic, position: { x, y }, linearDamping: 0.55, angularDamping: 0.9 });
+      b.addFixture({ shape: Circle.of(0.25), density: 1, restitution: 0.92, friction: 0.06 });
+      return b;
+    };
+    for (let r = 0; r < 5; r++) for (let c = 0; c <= r; c++) mk(2.5 + r * 0.46, (c - r * 0.5) * 0.53);
+    const cue = mk(-4, 0);
+    setTimeout(()=>{
+      cue.applyLinearImpulse(6, 0.1);
+    },500)
+    draw.cameraY = 0;
+    return w;
+  },
+
+  'Castle siege': () => {
+    const w = new World({ gravity: { x: 0, y: -10 } });
+    ground(w);
+    const tower = (x0) => {
+      for (let lvl = 0; lvl < 5; lvl++) {
+        const y = 0.3 + lvl * 1.3;
+        for (const dx of [-0.75, 0.75]) {
+          const b = w.createBody({ type: BodyType.Dynamic, position: { x: x0 + dx, y: y + 0.35 } });
+          b.addFixture({ shape: Polygon.box(0.16, 0.65), density: 1.4, friction: 0.7 });
+        }
+        const lintel = w.createBody({ type: BodyType.Dynamic, position: { x: x0, y: y + 1.1 } });
+        lintel.addFixture({ shape: Polygon.box(1.05, 0.16), density: 1.4, friction: 0.7 });
+      }
+    };
+    tower(4); tower(8); tower(12);
+    return w;   // use the Cannon tool to knock them down
+  },
+
+  'Soft body': () => {
+    const w = new World({ gravity: { x: 0, y: -10 } });
+    ground(w);
+    // A lattice of spring joints behaves like a deformable blob.
+    const N = 6, D = 0.42, grid = [];
+    for (let r = 0; r < N; r++) {
+      grid[r] = [];
+      for (let c = 0; c < N; c++) {
+        const b = w.createBody({ type: BodyType.Dynamic, position: { x: c * D - 1.2, y: 6 + r * D } });
+        b.addFixture({ shape: Circle.of(D * 0.42), density: 1, friction: 0.5, filter: { group: -40 } });
+        grid[r][c] = b;
+      }
+    }
+    const link = (a, b) => w.createDistanceJoint({ bodyA: a, bodyB: b, enableSpring: true, hertz: 9, dampingRatio: 0.6 });
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+      if (c + 1 < N) link(grid[r][c], grid[r][c + 1]);
+      if (r + 1 < N) link(grid[r][c], grid[r + 1][c]);
+      if (r + 1 < N && c + 1 < N) link(grid[r][c], grid[r + 1][c + 1]);   // shear braces
+      if (r + 1 < N && c > 0) link(grid[r][c], grid[r + 1][c - 1]);
+    }
+    for (let i = 0; i < 3; i++) {
+      const s = w.createBody({ type: BodyType.Static, position: { x: -4 + i * 4, y: 1.6 } });
+      s.addFixture({ shape: Polygon.box(0.35, 1.6), friction: 0.6 });
+    }
+    return w;
+  },
+
+  'Conveyors': () => {
+    const w = new World({ gravity: { x: 0, y: -10 } });
+    ground(w, 20);
+    const belts = [[-4, 6, 5, 4], [4, 3.4, 5, -4], [-4, 0.8, 5, 4]];
+    for (const [x, y, hw, spd] of belts) {
+      const b = w.createBody({ type: BodyType.Static, position: { x, y } });
+      b.addFixture({ shape: Polygon.box(hw, 0.22), friction: 0.95, tangentSpeed: spd });
+    }
+    wall(w, -9.4, 4, 0.3, 6); wall(w, 9.4, 4, 0.3, 6);
+    const rng = new Rng(11);
+    for (let i = 0; i < 18; i++) {
+      const b = w.createBody({ type: BodyType.Dynamic, position: { x: -8 + rng.float() * 3, y: 8 + i * 0.55 } });
+      if (i % 3 === 0) b.addFixture({ shape: Circle.of(0.2), density: 1, friction: 0.95 });
+      else b.addFixture({ shape: Polygon.box(0.2, 0.2), density: 1, friction: 0.95 });
+    }
+    return w;
+  },
+
+  'Sensor field': () => {
+    const w = new World({ gravity: { x: 0, y: -10 } });
+    ground(w);
+    for (let i = 0; i < 3; i++) {
+      const z = w.createBody({ type: BodyType.Static, position: { x: i * 4 - 4, y: 3 + i } });
+      z.addFixture({ shape: Polygon.box(1.6, 0.9), isSensor: true, userData: { zone: i } });
+    }
+    const rng = new Rng(5);
+    for (let i = 0; i < 14; i++) {
+      const b = w.createBody({ type: BodyType.Dynamic, position: { x: rng.float() * 12 - 6, y: 10 + i * 0.7 } });
+      b.addFixture({ shape: Circle.of(0.22), density: 1, restitution: 0.3 });
+    }
+    return w;
+  },
+
+  'Newton’s cradle': () => {
+    const w = new World({ gravity: { x: 0, y: -10 }, subSteps: 8 });
+    ground(w);
+    const L = 5;
+    const R = 0.5;
+    /*
+     * The balls are spaced with a small air gap rather than touching.
+     *
+     * A sequential-impulse solver resolves every contact within one step, so a
+     * row of *touching* balls has its whole chain solved at once: the inner
+     * contacts start at zero approach speed, get no restitution, and the shock
+     * is shared out instead of transmitted — all five balls drift off together.
+     *
+     * With a gap each impact lands on its own step, the wave travels ball to
+     * ball the way it does in reality, and the cradle behaves: one ball in,
+     * one ball out, with energy conserved. This is a property of the solver
+     * family, not a tuning value; see docs/ARCHITECTURE.md.
+     */
+    const gap = 0.04;
+    for (let i = 0; i < 5; i++) {
+      const x = i * (2 * R + gap) - 2 * (2 * R + gap);
+      const top = w.createBody({ type: BodyType.Static, position: { x, y: 14 } });
+      // The lifted ball must stay exactly L from its anchor, or the joint
+      // snaps it violently on the first step.
+      const a = i === 0 ? -0.7 : 0;
+      const start = { x: x + Math.sin(a) * L, y: 14 - Math.cos(a) * L };
+      const ball = w.createBody({ type: BodyType.Dynamic, position: start });
+      ball.addFixture({ shape: Circle.of(R), density: 12, restitution: 1, friction: 0 });
+      w.createDistanceJoint({ bodyA: top, bodyB: ball, length: L });
+    }
+    return w;
+  },
+
+  'Terrain drop': () => {
+    const w = new World({ gravity: { x: 0, y: -10 } });
+    hills(w, 1.8, 1.2);
+    for (let i = 0; i < 50; i++) {
+      const b = w.createBody({ type: BodyType.Dynamic, position: { x: -28 + i * 1.15, y: 14 + (i % 5) * 1.5 } });
+      if (i % 3 === 0) b.addFixture({ shape: Circle.of(0.32), density: 1, friction: 0.5, restitution: 0.25 });
+      else b.addFixture({ shape: Polygon.box(0.28, 0.28), density: 1, friction: 0.5 });
+    }
+    return w;
+  },
+
+  'Stress: 800 bodies': () => {
+    const w = new World({ gravity: { x: 0, y: -10 } });
+    ground(w, 40);
+    wall(w, -20, 12, 0.5, 14); wall(w, 20, 12, 0.5, 14);
+    const rng = new Rng(1234);
+    for (let i = 0; i < 800; i++) {
+      const b = w.createBody({
+        type: BodyType.Dynamic,
+        position: { x: rng.float() * 36 - 18, y: 1 + rng.float() * 34 },
+        angle: rng.float() * 6,
+      });
+      const k = rng.int(0, 2);
+      if (k === 0) b.addFixture({ shape: Circle.of(0.2), density: 1, friction: 0.4 });
+      else if (k === 1) b.addFixture({ shape: Polygon.box(0.2, 0.2), density: 1, friction: 0.4 });
+      else b.addFixture({ shape: Capsule.vertical(0.55, 0.14), density: 1, friction: 0.4 });
+    }
+    draw.pixelsPerMeter = 15;
+    draw.cameraY = 14;
+    return w;
+  },
+};
+
+/* ------------------------------- tools ----------------------------- */
+
+const tools = {
+  'Drag': { hint: 'grab and throw bodies' },
+  'Spawn box': { hint: 'click to drop a crate' },
+  'Spawn ball': { hint: 'click to drop a ball' },
+  'Cannon': { hint: 'click to fire a heavy shot' },
+  'Explode': { hint: 'click for a radial blast' },
+  'Ray cast': { hint: 'drag to cast a ray' },
+};
+let tool = 'Drag';
+
+function spawn(kind, x, y) {
+  const b = world.createBody({ type: BodyType.Dynamic, position: { x, y } });
+  if (kind === 'box') b.addFixture({ shape: Polygon.box(0.32, 0.32), density: 1, friction: 0.5, restitution: 0.1 });
+  else b.addFixture({ shape: Circle.of(0.3), density: 1, friction: 0.4, restitution: 0.45 });
+  return b;
+}
+
+function cannon(x, y) {
+  // Aim from the left edge of the view towards the click point.
+  const from = { x: draw.cameraX - canvas.width / (2 * draw.pixelsPerMeter) + 1, y: y + 3 };
+  const b = world.createBody({ type: BodyType.Dynamic, position: from, bullet: true });
+  b.addFixture({ shape: Circle.of(0.42), density: 12, friction: 0.4 });
+  const dx = x - from.x, dy = y - from.y;
+  const len = Math.max(0.001, Math.hypot(dx, dy));
+  const power = 28 * f(b.mass);
+  b.applyLinearImpulse((dx / len) * power, (dy / len) * power);
+  toast('cannon fired');
+}
+
+function explode(cx, cy, radius = 5.5, power = 90) {
+  let hit = 0;
+  world.queryAABB(cx - radius, cy - radius, cx + radius, cy + radius, (fx) => {
+    const body = fx.body;
+    if (body.type !== BodyType.Dynamic) return true;
+    const p = body.worldCenter;
+    const dx = f(p.x) - cx, dy = f(p.y) - cy;
+    const d = Math.hypot(dx, dy);
+    if (d > radius || d < 1e-6) return true;
+    const falloff = 1 - d / radius;
+    body.applyLinearImpulse((dx / d) * power * falloff, (dy / d) * power * falloff, f(p.x), f(p.y));
+    hit++;
+    return true;
+  });
+  blasts.push({ x: cx, y: cy, r: radius, t: 1 });
+  toast(hit + ' bodies pushed');
+}
+
+/** Visual-only effects; they never touch the simulation. */
+const blasts = [];
+let rayLine = null;
+
+/* ------------------------------- UI -------------------------------- */
+
+let current = 'Pyramid';
+const sceneBox = document.getElementById('scenes');
+for (const name of Object.keys(scenes)) {
+  const btn = document.createElement('button');
+  btn.textContent = name;
+  btn.dataset.scene = name;
+  btn.onclick = () => load(name);
+  sceneBox.appendChild(btn);
+}
+
+const toolBox = document.getElementById('tools');
+for (const [name, meta] of Object.entries(tools)) {
+  const btn = document.createElement('button');
+  btn.textContent = name;
+  btn.title = meta.hint;
+  btn.dataset.tool = name;
+  btn.onclick = () => {
+    tool = name;
+    for (const b of toolBox.children) b.classList.toggle('on', b.dataset.tool === name);
+    canvas.className = name === 'Drag' ? 'grab' : '';
+    document.getElementById('toolHint').textContent = meta.hint;
+    toast(meta.hint);
+  };
+  toolBox.appendChild(btn);
+}
+
+const flagBox = document.getElementById('flags');
+for (const key of ['shapes', 'fill', 'joints', 'contacts', 'contactNormals', 'contactImpulses', 'aabbs', 'centerOfMass', 'velocities', 'sleepState']) {
+  const label = document.createElement('label');
+  const cb = document.createElement('input');
+  cb.type = 'checkbox';
+  cb.checked = draw.flags[key];
+  cb.onchange = () => { draw.flags[key] = cb.checked; };
+  label.append(cb, document.createTextNode(key));
+  flagBox.appendChild(label);
+}
+
+const $ = (id) => document.getElementById(id);
+
+function bindSlider(id, valueId, fmt, apply) {
+  const el = $(id), out = $(valueId);
+  const run = () => { const v = parseFloat(el.value); out.textContent = fmt(v); apply(v); };
+  el.oninput = run;
+  return run;
+}
+const applySpeed = bindSlider('speed', 'speedV', (v) => v.toFixed(2) + '×', (v) => { speed = v; });
+const applySub   = bindSlider('sub', 'subV', (v) => String(v), (v) => { if (world) world.subSteps = v; });
+const applyGrav  = bindSlider('grav', 'gravV', (v) => v.toFixed(1), (v) => {
+  if (!world) return;
+  world.gravity.set(S.ZERO, S.fromFloat(v));
+  world.wakeAll();
+});
+
+$('sleep').onchange = (e) => { if (world) { world.enableSleep = e.target.checked; world.wakeAll(); } };
+$('warm').onchange  = (e) => { if (world) world.enableWarmStarting = e.target.checked; };
+
+$('play').onclick = () => setPaused(!paused);
+$('stepBtn').onclick = () => { stepOnce = true; if (!paused) setPaused(true); };
+
+function setPaused(p) {
+  paused = p;
+  $('play').textContent = p ? 'Play' : 'Pause';
+  $('play').classList.toggle('on', p);
+}
+
+let toastTimer = 0;
+function toast(msg) {
+  const el = $('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 1400);
+}
+
+function load(name) {
+  current = name;
+  mouseJoint = null;
+  groundBody = null;
+  blasts.length = 0;
+  rayLine = null;
+  draw.pixelsPerMeter = 26;
+  draw.cameraX = 0;
+  draw.cameraY = 7;
+
+  world = scenes[name]();
+
+  // Re-apply the panel settings to the fresh world.
+  world.subSteps = parseInt($('sub').value, 10);
+  world.gravity.set(S.ZERO, S.fromFloat(parseFloat($('grav').value)));
+  world.enableSleep = $('sleep').checked;
+  world.enableWarmStarting = $('warm').checked;
+
+  // Sensor scenes get a listener so the toast reports crossings.
+  if (name === 'Sensor field') {
+    let inside = 0;
+    world.setListener({
+      beginSensor: () => { inside++; toast('sensor: ' + inside + ' inside'); },
+      endSensor:   () => { inside--; },
+    });
+  }
+
+  for (const b of sceneBox.children) b.classList.toggle('on', b.dataset.scene === name);
+  $('sceneInfo').textContent = world.bodyCount + ' bodies';
+  $('verdict').innerHTML = 'Runs this scene twice from the same seed and compares checksums each tick.';
+  $('verdict').style.color = 'var(--dim)';
+}
+
+/* --------------------------- determinism --------------------------- */
+
+$('detBtn').onclick = () => {
+  const v = $('verdict');
+  v.style.color = 'var(--dim)';
+  v.textContent = 'running…';
+
+  // Let the browser paint the "running" state before the blocking loop.
+  setTimeout(() => {
+    const a = scenes[current]();
+    const b = scenes[current]();
+    const N = 600;
+    let diverged = -1;
+    const t0 = performance.now();
+    for (let i = 0; i < N; i++) {
+      a.step(); b.step();
+      if (checksumWorld(a) !== checksumWorld(b)) { diverged = i; break; }
+    }
+    const ms = performance.now() - t0;
+
+    if (diverged < 0) {
+      v.innerHTML = `<span class="ok">✔ identical</span> — ${N} ticks, bit for bit.<br>` +
+        `checksum <code>${checksumWorld(a).toString(16).padStart(8, '0')}</code><br>` +
+        `<span style="color:var(--dim)">${(ms).toFixed(0)} ms for 2×${N} steps</span>`;
+    } else {
+      v.innerHTML = `<span class="no">✘ diverged at tick ${diverged}</span>`;
+    }
+  }, 30);
+};
+
+/* ---------------------------- interaction -------------------------- */
+
+function resize() {
+  const r = canvas.parentElement.getBoundingClientRect();
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.max(1, Math.floor(r.width * dpr));
+  canvas.height = Math.max(1, Math.floor(r.height * dpr));
+}
+addEventListener('resize', resize);
+
+const pointerWorld = (ev) => {
+  const r = canvas.getBoundingClientRect();
+  const dpr = canvas.width / r.width;
+  return draw.screenToWorld((ev.clientX - r.left) * dpr, (ev.clientY - r.top) * dpr);
+};
+
+let panning = false, panStart = null, rayStart = null;
+
+canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+canvas.addEventListener('pointerdown', (ev) => {
+  canvas.setPointerCapture(ev.pointerId);
+  const p = pointerWorld(ev);
+
+  if (ev.button === 2) {
+    panning = true;
+    panStart = { ...p, camX: draw.cameraX, camY: draw.cameraY };
+    return;
+  }
+
+  switch (tool) {
+    case 'Spawn box':  spawn('box', p.x, p.y); return;
+    case 'Spawn ball': spawn('ball', p.x, p.y); return;
+    case 'Cannon':     cannon(p.x, p.y); return;
+    case 'Explode':    explode(p.x, p.y); return;
+    case 'Ray cast':   rayStart = p; rayLine = { from: p, to: p, hit: null }; return;
+  }
+
+  // Drag tool.
+  canvas.className = 'grabbing';
+  world.queryPoint(p.x, p.y, (fixture) => {
+    if (fixture.body.type !== BodyType.Dynamic) return true;
+    mouseJoint = world.createMouseJoint({
+      bodyA: groundBody ?? world.createBody({ type: BodyType.Static }),
+      bodyB: fixture.body,
+      target: { x: p.x, y: p.y },
+      hertz: 6, dampingRatio: 0.8,
+      maxForce: 2200 * f(fixture.body.mass),
+    });
+    return false;
+  });
+});
+
+canvas.addEventListener('pointermove', (ev) => {
+  const p = pointerWorld(ev);
+  if (panning && panStart) {
+    draw.cameraX = panStart.camX - (p.x - panStart.x);
+    draw.cameraY = panStart.camY - (p.y - panStart.y);
+    return;
+  }
+  if (rayStart) { rayLine = { from: rayStart, to: p, hit: null }; return; }
+  if (mouseJoint) mouseJoint.setTarget(p.x, p.y);
+});
+
+const endPointer = () => {
+  panning = false;
+  rayStart = null;
+  if (mouseJoint) { world.destroyJoint(mouseJoint); mouseJoint = null; }
+  canvas.className = tool === 'Drag' ? 'grab' : '';
+};
+canvas.addEventListener('pointerup', endPointer);
+canvas.addEventListener('pointercancel', endPointer);
+
+canvas.addEventListener('wheel', (ev) => {
+  ev.preventDefault();
+  const k = Math.exp(-ev.deltaY * 0.0016);
+  draw.pixelsPerMeter = Math.max(4, Math.min(180, draw.pixelsPerMeter * k));
+}, { passive: false });
+
+addEventListener('keydown', (ev) => {
+  if (ev.target.tagName === 'INPUT') return;
+  if (ev.code === 'Space') { ev.preventDefault(); setPaused(!paused); }
+  else if (ev.key === '.') { stepOnce = true; if (!paused) setPaused(true); }
+  else if (ev.key === 'r' || ev.key === 'R') { load(current); toast('scene reset'); }
+});
+
+/* ------------------------------- loop ------------------------------ */
+
+const statsEl = $('stats');
+const loadBar = $('loadBar');
+let last = performance.now();
+let smoothed = 0, uiTimer = 0;
+
+function frame(now) {
+  const dt = Math.min((now - last) / 1000, 0.05);
+  last = now;
+
+  if (!paused) world.accumulate(dt * speed, 5);
+  else if (stepOnce) { world.step(); stepOnce = false; }
+
+  // --- ray cast query, evaluated fresh each frame ---
+  if (rayLine) {
+    const hit = world.rayCastClosest(rayLine.from.x, rayLine.from.y, rayLine.to.x, rayLine.to.y);
+    rayLine.hit = hit ? { x: f(hit.point.x), y: f(hit.point.y), nx: f(hit.normal.x), ny: f(hit.normal.y) } : null;
+  }
+
+  draw.begin();
+  draw.drawWorld(world);
+
+  // --- overlays (visual only) ---
+  const c = draw.ctx;
+  if (rayLine) {
+    c.save();
+    c.strokeStyle = rayLine.hit ? '#ff5c5c' : '#4dffc3';
+    c.beginPath();
+    c.moveTo(rayLine.from.x, rayLine.from.y);
+    const end = rayLine.hit ?? rayLine.to;
+    c.lineTo(end.x, end.y);
+    c.stroke();
+    if (rayLine.hit) {
+      c.fillStyle = '#ff5c5c';
+      c.beginPath(); c.arc(rayLine.hit.x, rayLine.hit.y, 0.11, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = '#ffffff';
+      c.beginPath();
+      c.moveTo(rayLine.hit.x, rayLine.hit.y);
+      c.lineTo(rayLine.hit.x + rayLine.hit.nx * 0.6, rayLine.hit.y + rayLine.hit.ny * 0.6);
+      c.stroke();
+    }
+    c.restore();
+  }
+  for (let i = blasts.length - 1; i >= 0; i--) {
+    const b = blasts[i];
+    b.t -= 0.05;
+    if (b.t <= 0) { blasts.splice(i, 1); continue; }
+    c.save();
+    c.strokeStyle = `rgba(255,157,61,${b.t})`;
+    c.lineWidth = 0.06 / 1;
+    c.beginPath();
+    c.arc(b.x, b.y, b.r * (1.15 - b.t), 0, Math.PI * 2);
+    c.stroke();
+    c.restore();
+  }
+  draw.end();
+
+  // --- stats, throttled to ~12 Hz so the numbers stay readable ---
+  smoothed += (world.profile.total - smoothed) * 0.1;
+  if (now - uiTimer > 80) {
+    uiTimer = now;
+    const budget = Math.min(100, (smoothed / (1000 / 60)) * 100);
+    statsEl.innerHTML =
+      `tick     <b>${world.tick}</b>\n` +
+      `bodies   <b>${world.bodyCount}</b> <i>${world.awakeBodyCount}</i> awake\n` +
+      `contacts <b>${world.contactCount}</b> <i>${world.profile.activeContactCount}</i> active\n` +
+      `joints   <b>${world.jointCount}</b>\n` +
+      `step     <b>${smoothed.toFixed(2)}</b> ms\n` +
+      ` broad   ${world.profile.broadPhase.toFixed(2)} ms\n` +
+      ` narrow  ${world.profile.narrowPhase.toFixed(2)} ms\n` +
+      ` solve   ${world.profile.solve.toFixed(2)} ms`;
+    loadBar.style.width = budget.toFixed(0) + '%';
+    loadBar.style.background = budget > 90 ? 'var(--bad)' : budget > 55 ? 'var(--accent)' : 'var(--good)';
+  }
+
+  requestAnimationFrame(frame);
+}
+
+resize();
+load(current);
+toolBox.children[0].classList.add('on');
+canvas.className = 'grab';
+setPaused(false);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

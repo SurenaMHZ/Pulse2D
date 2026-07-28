@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Questions and ideas
+    url: https://github.com/SurenaMHZ/pulse2d/discussions
+    about: For usage questions and open-ended discussion, rather than bug reports.
+  - name: Documentation
+    url: https://github.com/SurenaMHZ/pulse2d#documentation
+    about: API reference, determinism rules, networking guide and recipes — in English and Persian.

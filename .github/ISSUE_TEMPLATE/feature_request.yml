@@ -1,0 +1,33 @@
+name: Feature request
+description: Suggest a capability or an API change
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do that is hard today?
+      description: Describe the problem, not only the solution you have in mind.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed API
+      render: typescript
+
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Constraints this would have to respect
+      options:
+        - label: It can be implemented with only `+ - * /` and `sqrt` (no `Math.sin` and friends)
+        - label: It works with both the float64 and the Q16.16 fixed-point backend
+        - label: It does not make solve order depend on discovery history
+        - label: It adds no runtime dependency
+        - label: It can be tree-shaken away by users who do not need it
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Workarounds you have tried

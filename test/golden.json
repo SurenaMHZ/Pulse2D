@@ -1,0 +1,15 @@
+{
+  "protocolVersion": 2,
+  "float64": {
+    "stack-and-tumble": "686692d5",
+    "every-joint": "8a157c4f",
+    "fast-bodies-ccd": "7cae25fc",
+    "sleep-and-wake": "e4809733"
+  },
+  "fixed": {
+    "stack-and-tumble": "0d1326e9",
+    "every-joint": "41d76c69",
+    "fast-bodies-ccd": "489e0c57",
+    "sleep-and-wake": "fb03646c"
+  }
+}

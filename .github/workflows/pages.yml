@@ -1,0 +1,62 @@
+name: Deploy demo to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never run two deploys at once, but let a queued one finish rather than
+# cancelling it — a half-deployed site is worse than a slightly stale one.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+
+      # Don't ship a demo that is already broken.
+      - name: Verify the demo scenes headlessly
+        run: node --test test/demo.test.mjs
+
+      # The site is a copy of demo/ plus the dist/ bundle it imports, laid out
+      # so the relative '../dist/pulse2d.mjs' import keeps working unchanged.
+      - name: Assemble the site
+        run: |
+          mkdir -p _site/demo _site/dist
+          cp demo/index.html _site/demo/
+          cp dist/pulse2d.mjs dist/pulse2d.mjs.map _site/dist/
+          cp README.md LICENSE _site/ 2>/dev/null || true
+          printf '<!doctype html><meta charset=utf-8><title>Pulse2D</title>' > _site/index.html
+          printf '<meta http-equiv=refresh content="0; url=./demo/">' >> _site/index.html
+          printf '<a href="./demo/">Pulse2D demo</a>' >> _site/index.html
+          touch _site/.nojekyll
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

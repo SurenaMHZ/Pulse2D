@@ -1,0 +1,91 @@
+{
+  "name": "pulse2d",
+  "version": "1.4.0",
+  "description": "Pulse2D — a fast, modular, fully deterministic 2D physics engine for real-time games (TypeScript, zero dependencies).",
+  "author": "SurenaMHZ",
+  "homepage": "https://github.com/SurenaMHZ/pulse2d#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SurenaMHZ/pulse2d.git"
+  },
+  "bugs": {
+    "url": "https://github.com/SurenaMHZ/pulse2d/issues"
+  },
+  "type": "module",
+  "license": "MIT",
+  "sideEffects": false,
+  "main": "./dist/pulse2d.cjs",
+  "module": "./dist/pulse2d.mjs",
+  "types": "./dist/types/index.d.ts",
+  "unpkg": "./dist/pulse2d.umd.js",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/types/index.d.ts",
+        "default": "./dist/pulse2d.mjs"
+      },
+      "require": {
+        "types": "./dist/types-cjs/index.d.cts",
+        "default": "./dist/pulse2d.cjs"
+      },
+      "default": "./dist/pulse2d.mjs"
+    },
+    "./fixed": {
+      "import": {
+        "types": "./dist/types/index.d.ts",
+        "default": "./dist/pulse2d.fixed.mjs"
+      },
+      "require": {
+        "types": "./dist/types-cjs/index.d.cts",
+        "default": "./dist/pulse2d.fixed.cjs"
+      },
+      "default": "./dist/pulse2d.fixed.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "docs"
+  ],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "types": "tsc -p tsconfig.build.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test test/math.test.mjs test/collision.test.mjs test/dynamics.test.mjs test/determinism.test.mjs test/golden.test.mjs test/conservation.test.mjs test/recipes.test.mjs test/demo.test.mjs test/robustness.test.mjs",
+    "bench": "node scripts/bench.mjs",
+    "prepublishOnly": "npm run build && npm test",
+    "demo": "node -e \"const{createServer}=require('http'),{readFile}=require('fs'),{extname,join}=require('path');const t={'.html':'text/html','.mjs':'text/javascript','.js':'text/javascript','.map':'application/json'};createServer((q,s)=>{const u=q.url==='/'?'/demo/index.html':q.url;readFile(join(process.cwd(),u),(e,b)=>{if(e){s.writeHead(404);return s.end('not found')}s.writeHead(200,{'content-type':t[extname(u)]||'text/plain'});s.end(b)})}).listen(8080,()=>console.log('demo: http://localhost:8080'))\"",
+    "pretest": "npm run build",
+    "test:only": "node --test test/math.test.mjs test/collision.test.mjs test/dynamics.test.mjs test/determinism.test.mjs test/golden.test.mjs test/conservation.test.mjs test/recipes.test.mjs test/demo.test.mjs test/robustness.test.mjs",
+    "prebench": "npm run build"
+  },
+  "keywords": [
+    "physics",
+    "2d",
+    "deterministic",
+    "lockstep",
+    "rollback",
+    "netcode",
+    "game",
+    "engine",
+    "collision",
+    "rigid-body",
+    "fixed-point",
+    "typescript"
+  ],
+  "devDependencies": {
+    "esbuild": "^0.23.0",
+    "typescript": "^5.5.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}
