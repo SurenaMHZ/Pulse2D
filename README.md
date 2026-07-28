@@ -66,7 +66,7 @@ import { World } from 'pulse2d/fixed';
 No build step? Drop in the UMD bundle:
 
 ```html
-<script src="./dist/pulse2d.umd.js"></script>
+<script src="https://unpkg.com/pulse2d/dist/pulse2d.umd.js"></script>
 <script>const world = new Pulse2D.World({ gravity: { x: 0, y: -10 } });</script>
 ```
 
@@ -555,4 +555,8 @@ Verified on Node 20 and Node 24, on Linux and Windows (PowerShell).
 
 ## Licence
 
+<<<<<<< HEAD
 MIT
+=======
+MIT
+>>>>>>> cab775bff4e7cecc09a6adb42a84b9d0bbd03778
