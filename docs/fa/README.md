@@ -66,7 +66,6 @@ import { World } from 'pulse2d/fixed';
 
 <div dir="rtl">
 
-بدون مرحلهٔ build؟ از باندل UMD استفاده کنید:
 
 </div>
 

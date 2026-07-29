@@ -6,8 +6,6 @@
 
 TypeScript · zero dependencies · 33 KB gzipped · bit-identical on every device
 
-[![CI](https://github.com/SurenaMHZ/pulse2d/actions/workflows/ci.yml/badge.svg)](https://github.com/SurenaMHZ/pulse2d/actions/workflows/ci.yml)
-[![npm](https://img.shields.io/npm/v/pulse2d.svg)](https://www.npmjs.com/package/pulse2d)
 [![bundle size](https://img.shields.io/badge/gzipped-33%20KB-blue)](#performance)
 [![dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)](package.json)
 [![licence](https://img.shields.io/badge/licence-MIT-blue)](LICENSE)
@@ -49,9 +47,6 @@ collision, and a Canvas debug renderer.
 
 ## Install
 
-```bash
-npm install pulse2d
-```
 
 ```ts
 import { World, BodyType, Polygon, Circle } from 'pulse2d';
@@ -63,10 +58,9 @@ The fixed-point build is a separate entry point:
 import { World } from 'pulse2d/fixed';
 ```
 
-No build step? Drop in the UMD bundle:
 
 ```html
-<script src="https://unpkg.com/pulse2d/dist/pulse2d.umd.js"></script>
+<script src="./dist/pulse2d.umd.js"></script>
 <script>const world = new Pulse2D.World({ gravity: { x: 0, y: -10 } });</script>
 ```
 
